@@ -11,8 +11,8 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
 ex = Experiment()
-ex_log_dir = 'brain_logs'
-data_dir = '/cs/grad/pazbu/paz/dev/projects/dnanet-v3/data/brain'
+ex_log_dir = 'logs'
+data_dir = '/cs/grad/pazbu/paz/dev/projects/dnanet-roadmap/data'
 
 ex.observers.append(FileStorageObserver.create(ex_log_dir))
 
@@ -20,8 +20,8 @@ ex.observers.append(FileStorageObserver.create(ex_log_dir))
 @ex.config
 def general_config():
     general_cfg = {
-                    "seq_length": 1000,
-                    "num_outs": 16,
+                    "seq_length": 500,
+                    "num_outs": 3,
                     "batch_size": 64,
                     "num_runs": 30,
                     "num_epochs": 10
@@ -29,15 +29,15 @@ def general_config():
 
 @ex.config
 def cnn_config():
-    conv1_cfg = {"num_filters": 32, "filter_size": [4, 7]}
-    conv2_cfg = {"num_filters": 64, "filter_size": [1, 5]}
-    conv3_cfg = {"num_filters": 64, "filter_size": [1, 5]}
-    pool1_cfg = {"kernel_size": 5, "stride": 5}
-    pool2_cfg = {"kernel_size": 5, "stride": 5}
-    pool3_cfg = {"kernel_size": 5, "stride": 5}
+    conv1_cfg = {"num_filters": 32, "filter_size": [4, 5]}
+    conv2_cfg = {"num_filters": 64, "filter_size": [1, 3]}
+    conv3_cfg = {"num_filters": 128, "filter_size": [1, 3]}
+    pool1_cfg = {"kernel_size": 3, "stride": 3}
+    pool2_cfg = {"kernel_size": 3, "stride": 3}
+    pool3_cfg = {"kernel_size": 3, "stride": 3}
     dense1_cfg = {"size": 100}
-    dense2_cfg = {"size": 50}
-    dropout_keep_prob = 0.5
+    dense2_cfg = {"size": 100}
+    dropout_keep_prob = 0.9
 
 
 def conv_rev_max(name_scope, input_tensor, num_filters, kernel_size=[5, 5]):
@@ -136,18 +136,8 @@ def run_experiment(general_cfg, dropout_keep_prob, seed):
 
     y_conv = CNN(x, dropout_keep_prob=keep_prob)
 
-    # loss_priors = np.load('prior.npy')
-    # cross_entropy_no_reduce = tf.losses.sigmoid_cross_entropy(multi_class_labels=y_, logits=y_conv, reduction=tf.losses.Reduction.NONE)
-    # cross_entropy_no_reduce = tf.matmul(loss_priors, tf.transpose(cross_entropy_no_reduce))
-    # cross_entropy = tf.reduce_sum(cross_entropy_no_reduce)
-
     cross_entropy = tf.losses.sigmoid_cross_entropy(multi_class_labels=y_, logits=y_conv)
 
-
-    # attach update ops used for the batch normalization
-    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    # with tf.control_dependencies(update_ops):
-    #     train_step = tf.train.AdamOptimizer().minimize(cross_entropy)
     train_step = tf.train.AdamOptimizer().minimize(cross_entropy)
 
     y_pred_sig = tf.sigmoid(y_conv, name="sigmoid_out")
@@ -171,7 +161,7 @@ def run_experiment(general_cfg, dropout_keep_prob, seed):
             chkp_dir = path.join(ex_log_dir, str(ex_id), "run" + str(run_idx))
             ds.reset()
             sess.run(tf.global_variables_initializer())
-            summary_writer = tf.summary.FileWriter("/cs/grad/pazbu/paz/dev/projects/dnanet-v3/summaries", graph=sess.graph)
+            summary_writer = tf.summary.FileWriter("/cs/grad/pazbu/paz/dev/projects/dnanet-roadmap/summaries", graph=sess.graph)
             current_step = 0
             while ds.train.epochs_completed < num_epochs:
                 current_step += 1
